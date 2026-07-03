@@ -6,35 +6,32 @@ Es una app web (WebXR + Three.js) que corre en el navegador del PC y del Quest.
 
 ---
 
-## ✅ CÓMO ACTIVAR EL TÚNEL (para usar en el Quest)
+## ⭐ LINK PERMANENTE (nunca se cae)
 
-### La forma fácil (recomendada)
-1. **Doble clic en el acceso directo del escritorio: "Florenza V - Iniciar"**
-   (o busca "Florenza V" en el menú Inicio de Windows).
-2. Se abre una ventana negra. Espera ~15 segundos.
-3. Aparece el **código QR en la pantalla** y la URL.
-4. Ponte el Quest, mira el QR con el passthrough y toca la notificación.
-5. **Deja esa ventana negra abierta** mientras uses las gafas.
+### https://dloaiza05.github.io/florenza-v/
 
-### Por qué se cae el link
-La URL gratuita de Cloudflare (`xxxxx.trycloudflare.com`) **cambia cada vez** que
-reinicias y se cae si cierras la ventana o apagas el PC. Es normal en la versión
-gratis. Cada vez que abras el acceso directo, genera una URL nueva y abre el QR.
+Ese es el link oficial de Florenza V. Está publicado en GitHub Pages
+(cuenta: **dloaiza05**), es **gratis para siempre**, funciona 24/7 desde los
+servidores de GitHub, **no depende de tu PC** y **nunca cambia**.
 
-### El comando manual (si el acceso directo falla)
-Abre PowerShell en la carpeta `mueble-xr` y ejecuta:
+- Ábrelo en el navegador del Quest UNA vez y **guárdalo en favoritos**.
+- Ya no necesitas el túnel ni el QR (siguen disponibles como respaldo).
+
+### Cómo publicar una actualización
+1. Edita los archivos (o pídele los cambios a Claude).
+2. **Doble clic en el acceso directo "Florenza V - Publicar cambios"**
+   (escritorio) — sube todo al sitio.
+3. En 1-2 minutos los cambios están en línea; recarga la página en el Quest.
+
+Comando manual equivalente (en la carpeta `mueble-xr`):
 ```powershell
-# 1) Servidor local
-Start-Process cmd -ArgumentList '/c npx -y serve . -l 8123' -WindowStyle Hidden
-# 2) Túnel (muestra la URL en pantalla)
-herramientas\cloudflared.exe tunnel --url http://localhost:8123
+git add -A; git commit -m "cambios"; git push
 ```
-La URL aparece en el recuadro que dice "Your quick Tunnel has been created".
 
-### Solución definitiva (URL fija para siempre)
-Publicar en **GitHub Pages** (gratis): tendrías una dirección permanente que
-nunca se cae ni cambia, sin depender de que el PC esté encendido. Requiere crear
-una cuenta gratis en github.com. Pídemelo y te guío en 10 minutos.
+### Túnel local (SOLO como respaldo / pruebas rápidas)
+Doble clic en "Florenza V - Iniciar" (escritorio): arranca servidor + túnel
+temporal + QR. La URL del túnel cambia en cada arranque — para uso normal
+usa siempre el link permanente de arriba.
 
 ---
 
