@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Florenza V — Diseño de muebles en Realidad Mixta</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='3' y='5' width='26' height='22' rx='3' fill='%23f0ad4e'/%3E%3Crect x='6' y='8' width='9' height='16' rx='1' fill='%23161310'/%3E%3Crect x='17' y='8' width='9' height='7' rx='1' fill='%23161310'/%3E%3Crect x='17' y='17' width='9' height='7' rx='1' fill='%23161310'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.165.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.165.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<header id="topbar">
+  <div class="brand">
+    <svg class="brand-logo" viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
+      <rect x="3" y="5" width="26" height="22" rx="3" fill="var(--accent)"/>
+      <rect x="6" y="8" width="9" height="16" rx="1" fill="#161310"/>
+      <rect x="17" y="8" width="9" height="7" rx="1" fill="#161310"/>
+      <rect x="17" y="17" width="9" height="7" rx="1" fill="#161310"/>
+    </svg>
+    <div class="brand-texto">Florenza<span> V</span><small>Diseño de muebles en realidad mixta</small></div>
+  </div>
+  <input id="nombreProyecto" type="text" value="Proyecto sin nombre" title="Nombre del proyecto">
+  <div class="topbar-actions">
+    <button id="btnGuardar" title="Guardar en la biblioteca de muebles">💾 Guardar</button>
+    <select id="selProyectos" title="Biblioteca de muebles guardados"><option value="">📚 Biblioteca de muebles…</option></select>
+    <button id="btnPDF" title="Descargar ficha PDF del mueble">📄 PDF</button>
+    <button id="btnExportar" title="Descargar proyecto como archivo JSON">⬇ Exportar</button>
+    <label class="btn-file" title="Importar modelo 3D (.glb / .gltf)">📦 Importar GLB<input id="inpGLB" type="file" accept=".glb,.gltf" hidden></label>
+  </div>
+</header>
+
+<main>
+  <!-- ===== Panel izquierdo: parámetros ===== -->
+  <aside id="panelParams">
+    <h2>Parámetros del mueble</h2>
+
+    <details id="leyenda">
+      <summary>¿Qué significa cada símbolo?</summary>
+      <div id="leyendaGrid"></div>
+    </details>
+
+    <label>Tipo de mueble
+      <select id="tipo">
+        <option value="bajo">Mueble bajo de cocina</option>
+        <option value="alacena">Alacena (módulo aéreo)</option>
+        <option value="closet">Clóset</option>
+        <option value="comoda">Cómoda (cajones)</option>
+        <option value="mesa">Mesa</option>
+      </select>
+    </label>
+
+    <div class="grid2">
+      <label>Ancho (mm)<input id="ancho" type="number" value="800" min="200" max="3000" step="10"></label>
+      <label>Alto (mm)<input id="alto" type="number" value="900" min="200" max="2600" step="10"></label>
+      <label>Profundidad (mm)<input id="prof" type="number" value="550" min="150" max="900" step="10"></label>
+      <label>Espesor lámina
+        <select id="espesor">
+          <option value="15">15 mm</option>
+          <option value="18" selected>18 mm</option>
+          <option value="25">25 mm</option>
+        </select>
+      </label>
+      <label>Divisiones (módulos +1)<input id="divisiones" type="number" value="0" min="0" max="6"></label>
+      <label>Editar módulo
+        <select id="modulo"><option value="0">Todos los módulos</option></select>
+      </label>
+      <label>Ancho módulo (mm, 0=auto)<input id="anchoMod" type="number" value="0" min="0" max="3000" step="10"></label>
+      <label>Alto módulo (mm, 0=auto)<input id="altoMod" type="number" value="0" min="0" max="2600" step="10"></label>
+      <label>Entrepaños (módulo)<input id="entrepanos" type="number" value="0" min="0" max="12"></label>
+      <label>Subdivisiones (módulo)<input id="subdiv" type="number" value="0" min="0" max="8"></label>
+      <label>Puertas (módulo)
+        <select id="puertas">
+          <option value="0" selected>Sin puertas</option>
+          <option value="1">1 puerta</option>
+          <option value="2">2 puertas</option>
+        </select>
+      </label>
+      <label>Cajones (módulo)<input id="cajones" type="number" value="0" min="0" max="8"></label>
+      <label>Tubo colgador (módulo)
+        <select id="tubo">
+          <option value="0" selected>Sin tubo</option>
+          <option value="1">Con tubo</option>
+        </select>
+      </label>
+      <label>Zócalo (mm)<input id="zocalo" type="number" value="100" min="0" max="200" step="10"></label>
+      <label>Apertura puertas
+        <select id="apertura">
+          <option value="lateral" selected>Lateral (bisagra vertical)</option>
+          <option value="arriba">Hacia arriba</option>
+          <option value="abajo">Hacia abajo</option>
+        </select>
+      </label>
+    </div>
+
+    <div id="alturasWrap" style="display:none">
+      <h2>Alturas de entrepaños (mm)</h2>
+      <p class="ayuda-txt">Altura de cada repisa medida desde la base interior. Edita y todo se recalcula.</p>
+      <div id="alturasEntrepanos"></div>
+    </div>
+
+    <div id="anchosWrap" style="display:none">
+      <h2>Ancho de columnas (mm)</h2>
+      <p class="ayuda-txt">Ancho de cada columna entre subdivisiones, de izquierda a derecha.</p>
+      <div id="anchosSub"></div>
+    </div>
+
+    <h2>Material / Acabado</h2>
+    <div id="swatches"></div>
+
+    <h2>Ensamblaje</h2>
+    <label class="slider-label">Vista explosionada → armado
+      <input id="ensamblaje" type="range" min="0" max="100" value="100">
+    </label>
+    <button id="btnAnimar" class="full">▶ Animar armado</button>
+    <button id="btnPuertas" class="full">🚪 Abrir / cerrar puertas</button>
+
+    <h2>Lámina y costos</h2>
+    <div class="grid2">
+      <label>Lámina largo (mm)<input id="laminaL" type="number" value="2440" step="10"></label>
+      <label>Lámina ancho (mm)<input id="laminaA" type="number" value="1220" step="10"></label>
+      <label>Precio / lámina<input id="precioLamina" type="number" value="0" min="0" step="1000"></label>
+      <label>Sierra / kerf (mm)<input id="kerf" type="number" value="4" min="0" max="10"></label>
+      <label>Precio canto / m<input id="precioCanto" type="number" value="0" min="0" step="500"></label>
+      <label>Precio bisagra<input id="precioBisagra" type="number" value="0" min="0" step="500"></label>
+      <label>Precio corredera (par)<input id="precioCorredera" type="number" value="0" min="0" step="1000"></label>
+      <label>Mano de obra<input id="precioMO" type="number" value="0" min="0" step="5000"></label>
+    </div>
+
+    <h2>Rentabilidad</h2>
+    <label class="slider-label">Margen de ganancia: <b id="margenVal">40%</b>
+      <input id="margen" type="range" min="0" max="80" value="40" step="5">
+    </label>
+    <div id="cotizacion" class="resumen"></div>
+
+    <h2>Código del mueble</h2>
+    <p class="ayuda-txt">Copia el código para compartir este diseño, o pega uno para cargarlo.</p>
+    <textarea id="codigoMueble" rows="3" placeholder="Pega aquí un código de mueble…"></textarea>
+    <div class="grid2">
+      <button id="btnCopiarCodigo">📤 Copiar código</button>
+      <button id="btnCargarCodigo">📥 Cargar código</button>
+    </div>
+    <div id="codigoMsg" class="resumen" style="display:none"></div>
+  </aside>
+
+  <!-- ===== Viewport 3D ===== -->
+  <section id="viewport">
+    <canvas id="c3d"></canvas>
+    <div id="hud">
+      <span id="hudInfo"></span>
+    </div>
+  </section>
+
+  <!-- ===== Panel derecho: resultados ===== -->
+  <aside id="panelResultados">
+    <nav class="tabs">
+      <button class="tab active" data-tab="despiece">Despiece</button>
+      <button class="tab" data-tab="plano">Plano de corte</button>
+    </nav>
+    <div id="tab-despiece" class="tab-content active">
+      <table id="tablaDespiece">
+        <thead><tr><th>Pieza</th><th>Cant.</th><th>Largo</th><th>Ancho</th><th>Esp.</th><th>Veta</th><th>Área m²</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div id="resumenDespiece" class="resumen"></div>
+    </div>
+    <div id="tab-plano" class="tab-content">
+      <div id="planoInfo" class="resumen"></div>
+      <div id="planoSheets"></div>
+    </div>
+  </aside>
+</main>
+
+<script type="module" src="js/app.js?v=44"></script>
+</body>
+</html>

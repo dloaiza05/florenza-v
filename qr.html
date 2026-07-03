@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>QR para abrir Florenza V en el Quest</title>
+<style>
+  body {
+    margin: 0; min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: #14110e; color: #ece5dc; font-family: "Segoe UI", system-ui, sans-serif;
+    text-align: center; gap: 18px;
+  }
+  h1 { color: #e8a33d; font-size: 1.6rem; margin: 0; }
+  #caja { background: #fff; padding: 24px; border-radius: 16px; }
+  #url { font-size: 1.05rem; color: #a89c8e; word-break: break-all; max-width: 600px; }
+  p { max-width: 560px; line-height: 1.5; margin: 0; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+<h1>🪚 Florenza V — escanéalo con el Quest</h1>
+<div id="caja"><div id="qr"></div></div>
+<div id="url">Cargando…</div>
+<p>Ponte el visor, mira este código a través del passthrough y toca la
+notificación que aparece. Se abre directo en el navegador del Quest,
+sin escribir nada.</p>
+<script>
+fetch('herramientas/url.txt')
+  .then(r => { if (!r.ok) throw new Error(); return r.text(); })
+  .then(t => {
+    const u = t.trim();
+    document.getElementById('url').textContent = u;
+    new QRCode(document.getElementById('qr'), { text: u, width: 380, height: 380 });
+  })
+  .catch(() => {
+    document.getElementById('url').textContent =
+      'No se encontró la URL del túnel. Ejecuta INICIAR-PARA-QUEST.bat primero.';
+  });
+</script>
+</body>
+</html>
