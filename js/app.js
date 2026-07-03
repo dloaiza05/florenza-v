@@ -6,6 +6,7 @@ import { PRESETS, obtenerMateriales, crearSwatchCanvas } from './materials.js';
 import { generarPiezas } from './furniture.js';
 import { agruparDespiece, optimizarCorte, dibujarPlanos } from './cutlist.js';
 import { iconoCanvas, dibujarIcono } from './icons.js';
+import { PLANTILLAS } from './biblioteca.js';
 
 // ============================== Estado ==============================
 const $ = (id) => document.getElementById(id);
@@ -150,13 +151,18 @@ function sincronizarModulos() {
   const t = +$('espesor').value;
   const Wint = (+$('ancho').value) - 2 * t;
   const nDiv = nSec - 1;
-  const anchoSec = Math.round((Wint - nDiv * t) / nSec);
+  // Ancho REAL de cada módulo: los fijos usan su valor; el resto reparte
+  const espacio = Wint - nDiv * t;
+  let fijos = 0, nAuto = 0;
+  for (const mm of modulosConfig) { if (mm.ancho > 0) fijos += mm.ancho; else nAuto++; }
+  const anchoAuto = nAuto > 0 ? Math.max(50, Math.round((espacio - fijos) / nAuto)) : 0;
 
   const sel = $('modulo');
   if (sel) {
     const prev = moduloSel;
     sel.innerHTML = `<option value="0">Todos los módulos</option>` +
-      modulosConfig.map((_, i) => `<option value="${i + 1}">Módulo ${String.fromCharCode(65 + i)} — ${anchoSec} mm</option>`).join('');
+      modulosConfig.map((mm, i) =>
+        `<option value="${i + 1}">Módulo ${String.fromCharCode(65 + i)} — ${mm.ancho > 0 ? mm.ancho : anchoAuto} mm</option>`).join('');
     sel.value = String(prev);
   }
   reflejarModuloEnInputs();
@@ -693,13 +699,23 @@ const leerProyectos = () => JSON.parse(localStorage.getItem(CLAVE) || '{}');
 function refrescarListaProyectos() {
   const proyectos = leerProyectos();
   const sel = $('selProyectos');
-  // La biblioteca muestra nombre + dimensiones de cada mueble guardado
+  // Mis muebles guardados + 50 plantillas profesionales por categoría
+  const mios = Object.entries(proyectos).map(([n, d]) => {
+    const p = d.params || {};
+    const dim = p.ancho ? ` (${p.ancho}×${p.alto}×${p.prof})` : '';
+    return `<option value="${n}">${n}${dim}</option>`;
+  }).join('');
+  const cats = [...new Set(PLANTILLAS.map(t => t.cat))];
+  const grupos = cats.map(cat =>
+    `<optgroup label="📐 ${cat}">` +
+    PLANTILLAS.map((t, i) => t.cat === cat
+      ? `<option value="tpl:${i}">${t.nombre} (${t.params.ancho}×${t.params.alto}×${t.params.prof})</option>` : '')
+      .join('') +
+    `</optgroup>`
+  ).join('');
   sel.innerHTML = '<option value="">📚 Biblioteca de muebles…</option>' +
-    Object.entries(proyectos).map(([n, d]) => {
-      const p = d.params || {};
-      const dim = p.ancho ? ` (${p.ancho}×${p.alto}×${p.prof})` : '';
-      return `<option value="${n}">${n}${dim}</option>`;
-    }).join('');
+    (mios ? `<optgroup label="💾 Mis muebles">${mios}</optgroup>` : '') +
+    grupos;
 }
 refrescarListaProyectos();
 
@@ -729,10 +745,16 @@ function cargarProyecto(datos, nombre) {
 }
 
 $('selProyectos').onchange = (e) => {
-  const nombre = e.target.value;
-  if (!nombre) return;
-  const datos = leerProyectos()[nombre];
-  if (datos) cargarProyecto(datos, nombre);
+  const valor = e.target.value;
+  if (!valor) return;
+  if (valor.startsWith('tpl:')) {
+    // Plantilla profesional: se carga y queda 100 % editable
+    const t = PLANTILLAS[+valor.slice(4)];
+    if (t) cargarProyecto({ params: t.params, material: t.material }, t.nombre);
+  } else {
+    const datos = leerProyectos()[valor];
+    if (datos) cargarProyecto(datos, valor);
+  }
   e.target.value = '';
 };
 
