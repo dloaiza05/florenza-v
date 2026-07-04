@@ -390,7 +390,6 @@ function alternarPuertas() {
   if (!todos.length) return;
   const abrir = todos.some(e => e.objetivo === 1) ? 0 : 1;
   for (const e of todos) e.objetivo = abrir;
-  btnPuertasMenu?.userData.setLabel(abrir ? 'Cerrar puertas' : 'Abrir puertas');
 }
 
 function abrirTodo(abrir) {
@@ -731,14 +730,7 @@ $('btnGuardar').onclick = () => {
 
 function cargarProyecto(datos, nombre) {
   $('nombreProyecto').value = nombre;
-  for (const [k, v] of Object.entries(datos.params)) if ($(k) && k !== 'modulos') $(k).value = v;
-  // Restaurar la configuración COMPLETA de cada módulo (todos sus campos)
-  modulosConfig = (datos.params.modulos && datos.params.modulos.length)
-    ? datos.params.modulos.map(m => ({ ...moduloDefault(), ...m }))
-    : [moduloDefault()];
-  $('divisiones').value = modulosConfig.length - 1;
-  moduloSel = 0;
-  sincronizarModulos();
+  restaurarParams(datos.params); // inputs + configuración completa de módulos
   materialActual = datos.material || 'roble';
   cont.querySelectorAll('.swatch').forEach(s => s.classList.toggle('active', s.dataset.id === materialActual));
   reconstruir();
@@ -1131,14 +1123,6 @@ function alPiso() {
   restringirPosicion();
 }
 
-// Cambiar de tipo de mueble (bajo → alacena → clóset → cómoda → mesa)
-function cambiarMueble(dir) {
-  guardarHistorial();
-  const s = $('tipo');
-  s.selectedIndex = (s.selectedIndex + dir + s.options.length) % s.options.length;
-  reconstruir();
-}
-
 // "Grado cero": el frente del mueble queda RECTO hacia donde estás mirando
 // (perpendicular a tu vista), no inclinado hacia tu posición.
 function frenteAMi() {
@@ -1298,7 +1282,6 @@ menuXR.visible = false;
 scene.add(menuXR);
 const botonesMenu = [];
 let btnMalla = null;
-let btnPuertasMenu = null;
 let btn4Puntos = null;
 let btnTopes = null;
 let btnPared = null;
@@ -1353,8 +1336,9 @@ const SECCIONES_MENU = [
 ];
 
 {
+  // Fondo compacto: el alto se ajusta exactamente al contenido real
   const fondoMenu = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.24, 0.50),
+    new THREE.PlaneGeometry(0.24, 0.42),
     new THREE.MeshBasicMaterial({ color: 0x14110e, transparent: true, opacity: 0.9 })
   );
   menuXR.add(fondoMenu);
@@ -1363,11 +1347,11 @@ const SECCIONES_MENU = [
     new THREE.PlaneGeometry(0.1, 0.02),
     new THREE.MeshBasicMaterial({ map: tituloTex.tx, transparent: true })
   );
-  titulo.position.set(0, 0.225, 0.002);
+  titulo.position.set(0, 0.185, 0.002);
   menuXR.add(titulo);
 
   const bw = 0.104, bh = 0.032, gx = 0.007;
-  let cy = 0.19;
+  let cy = 0.15;
   for (const [nombreSec, items] of SECCIONES_MENU) {
     const cab = texturaTexto(nombreSec, 360, 40, 'bold 22px sans-serif', '#1d1813', '#e8a33d');
     const cabMesh = new THREE.Mesh(
@@ -1384,12 +1368,12 @@ const SECCIONES_MENU = [
       menuXR.add(btn);
       botonesMenu.push(btn);
       if (etiqueta === 'Malla: Sí') btnMalla = btn;
-      if (etiqueta === 'Abrir puertas') btnPuertasMenu = btn;
       if (etiqueta === '📐 4 puntos') btn4Puntos = btn;
       if (etiqueta === 'Topes: Sí') btnTopes = btn;
       if (etiqueta === '🎯 Marcar pared') btnPared = btn;
     });
-    cy -= 0.038 * 2 + 0.006;
+    // Avanza según las filas REALES de la sección (a prueba de crecer)
+    cy -= 0.038 * Math.max(2, Math.ceil(items.length / 2)) + 0.006;
   }
   btnMalla.userData.activo = mallaVisible;
   btnTopes.userData.activo = topesActivos;
@@ -1398,7 +1382,7 @@ const SECCIONES_MENU = [
 
   // ✕ flotante por encima del menú: salir de AR con un toque
   const btnX = crearBotonXR('✕', () => renderer.xr.getSession()?.end(), 0.05, 0.05, 'bold 56px sans-serif');
-  btnX.position.set(0, 0.34, 0.003);
+  btnX.position.set(0, 0.28, 0.003);
   menuXR.add(btnX);
   botonesMenu.push(btnX);
 }
@@ -1705,7 +1689,7 @@ scene.add(ayudaXR);
     ['Palanca (llevándolo)', 'Acercar / alejar el mueble'],
     ['Gatillo en flechas / centro', 'Mover por un eje o deslizar libre'],
     ['Grip izquierdo / derecho', 'Girar 15° izquierda / derecha'],
-    ['Cruceta (mano derecha)', 'Correr el mueble por la pared, sin topes'],
+    ['Cruceta (sobre panel izq.)', 'Correr el mueble exacto, sin topes'],
     ['Palanca derecha', 'Subir / bajar  (rotar si "Rotar: Sí")'],
     ['A (derecho)', 'Menú general de opciones'],
     ['B (derecho)', 'Opciones de ESTE mueble'],
@@ -1713,6 +1697,7 @@ scene.add(ayudaXR);
     ['Clic en otro mueble', 'Lo selecciona (gizmo pasa a él)'],
     ['Menú → 📐 4 puntos', 'Medir hueco: A,B arriba y C,D abajo'],
     ['Menú → 🎯 Marcar pared', 'El mueble solo se pega a ESA pared'],
+    ['Menú → 📚 Biblioteca', '50 diseños listos, 100 % editables'],
   ];
   lineas.forEach(([k, v], i) => {
     const y = 92 + i * 41;
@@ -2635,6 +2620,8 @@ function alSeleccionar(ctrl) {
   if (menuObjetoXR.visible) { menuObjetoXR.visible = false; return; }
   if (selectorXR.visible) { selectorXR.visible = false; return; }
   if (biblioXR.visible) { biblioXR.visible = false; return; }
+  if (ayudaXR.visible) { ayudaXR.visible = false; return; }
+  if (despieceXR.visible) { despieceXR.visible = false; return; }
   if (modoMarcarPared) {
     if (seleccionarParedRayo(ctrl)) {
       pulso(ctrl);
@@ -2847,13 +2834,25 @@ function guardarActivoEnLista() {
   });
 }
 
+// Restaura inputs Y la configuración de módulos de un mueble guardado
+// (sin esto, al cambiar de mueble se quedaban los módulos del anterior)
+function restaurarParams(params) {
+  for (const [k, v] of Object.entries(params)) if ($(k) && k !== 'modulos') $(k).value = v;
+  modulosConfig = (params.modulos && params.modulos.length)
+    ? params.modulos.map(mm => ({ ...moduloDefault(), ...mm }))
+    : [moduloDefault()];
+  $('divisiones').value = modulosConfig.length - 1;
+  moduloSel = 0;
+  sincronizarModulos();
+}
+
 // Hace activo un mueble ya colocado (el gizmo y el panel pasan a él)
 function activarMueble(entrada) {
   marcarMovimiento();
   guardarActivoEnLista();
   muebles.splice(muebles.indexOf(entrada), 1);
   muebleGroup = entrada.group;
-  for (const [k, v] of Object.entries(entrada.params)) if ($(k)) $(k).value = v;
+  restaurarParams(entrada.params);
   escalaMueble = entrada.escala;
   alturaLibre = entrada.libre;
   seleccionarMaterial(entrada.material); // reconstruye conservando su posición
@@ -2882,7 +2881,7 @@ function quitarMueble() {
   const previo = muebles.pop();
   if (previo) {
     muebleGroup = previo.group;
-    for (const [k, v] of Object.entries(previo.params)) if ($(k)) $(k).value = v;
+    restaurarParams(previo.params);
     escalaMueble = previo.escala;
     alturaLibre = previo.libre;
     seleccionarMaterial(previo.material);
