@@ -1068,7 +1068,7 @@ function texturaTexto(texto, w, h, fuente, bg, fg, icono = null) {
       const isz = h * 0.82;
       dibujarIcono(ctx, icono, (w - isz) / 2, (h - isz) / 2, isz, fg);
     } else {
-      ctx.fillText(txt, w / 2, h / 2 + 1);
+      ctx.fillText(txt, w / 2, h / 2 + 1, w - 14); // se comprime si es largo
     }
     tx.needsUpdate = true;
   };
@@ -1321,6 +1321,7 @@ const SECCIONES_MENU = [
   ]],
   ['PROYECTO', [
     ['➕ Añadir mueble', () => agregarMueble()],
+    ['📚 Biblioteca', () => { menuXR.visible = false; alternarBiblioXR(); }],
     ['📐 4 puntos', () => alternarCuatroPuntos()],
     ['🎯 Marcar pared', () => {
       if (paredMarcada) {
@@ -1859,10 +1860,19 @@ const botonesSelector = [];
     ['mesa', 'Mesa', { tipo: 'mesa', ancho: 1200, alto: 750, prof: 800, espesor: 25, entrepanos: 0, puertas: 0, cajones: 0, zocalo: 0, apertura: 'lateral' }],
   ];
   const fondoSel = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.58, 0.22),
+    new THREE.PlaneGeometry(0.58, 0.27),
     new THREE.MeshBasicMaterial({ color: 0x14110e, transparent: true, opacity: 0.88 })
   );
+  fondoSel.position.y = -0.02;
   selectorXR.add(fondoSel);
+  // Acceso a la biblioteca de 50 diseños profesionales
+  const btnBiblio = crearBotonXR('📚 Biblioteca: 50 diseños…', () => {
+    selectorXR.visible = false;
+    alternarBiblioXR();
+  }, 0.3, 0.03, 'bold 24px sans-serif');
+  btnBiblio.position.set(0, -0.122, 0.003);
+  selectorXR.add(btnBiblio);
+  botonesSelector.push(btnBiblio);
   const tituloSel = texturaTexto('Elige el mueble', 320, 48, 'bold 26px sans-serif', '#14110e', '#e8a33d');
   const tSel = new THREE.Mesh(
     new THREE.PlaneGeometry(0.13, 0.02),
@@ -1912,6 +1922,81 @@ function alternarSelector() {
   selectorXR.position.copy(cam.position).addScaledVector(dir, 0.65);
   selectorXR.lookAt(cam.position);
   selectorXR.visible = true;
+}
+
+// ---------- 📚 Biblioteca de 50 diseños DENTRO de las gafas ----------
+// Dos niveles: primero las 5 categorías, luego los 10 diseños de cada una.
+// Al tocar un diseño se carga en el mueble activo, 100 % editable.
+const biblioXR = new THREE.Group();
+biblioXR.visible = false;
+scene.add(biblioXR);
+let botonesBiblio = [];
+
+function limpiarBiblioXR() {
+  for (const c of [...biblioXR.children]) {
+    biblioXR.remove(c);
+    c.geometry?.dispose?.();
+    c.material?.map?.dispose?.();
+    c.material?.dispose?.();
+  }
+  botonesBiblio = [];
+}
+
+function construirBiblioXR(cat) {
+  limpiarBiblioXR();
+  const corto = (s) => s.length > 26 ? s.slice(0, 25) + '…' : s;
+  let items;
+  if (!cat) {
+    items = [...new Set(PLANTILLAS.map(t => t.cat))]
+      .map(c => [`📐 ${c}`, () => construirBiblioXR(c)]);
+  } else {
+    items = PLANTILLAS
+      .map((t) => t.cat === cat
+        ? [corto(t.nombre), () => {
+            guardarHistorial();
+            cargarProyecto({ params: t.params, material: t.material }, t.nombre);
+            biblioXR.visible = false;
+          }]
+        : null)
+      .filter(Boolean);
+    items.push(['◀ Volver a categorías', () => construirBiblioXR(null)]);
+  }
+
+  const bw = 0.22, bh = 0.031, paso = 0.037;
+  const alto = items.length * paso + 0.075;
+  const fondo = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.26, alto),
+    new THREE.MeshBasicMaterial({ color: 0x14110e, transparent: true, opacity: 0.9 })
+  );
+  biblioXR.add(fondo);
+  const tit = texturaTexto(cat ? corto(cat) : '📚 Biblioteca Florenza', 460, 44,
+    'bold 24px sans-serif', '#1d1813', '#e8a33d');
+  const titM = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.21, 0.02),
+    new THREE.MeshBasicMaterial({ map: tit.tx, transparent: true })
+  );
+  titM.position.set(0, alto / 2 - 0.028, 0.002);
+  biblioXR.add(titM);
+  let cy = alto / 2 - 0.062;
+  for (const [etq, acc] of items) {
+    const btn = crearBotonXR(etq, acc, bw, bh, 'bold 21px sans-serif');
+    btn.position.set(0, cy, 0.003);
+    biblioXR.add(btn);
+    botonesBiblio.push(btn);
+    cy -= paso;
+  }
+}
+
+function alternarBiblioXR() {
+  if (biblioXR.visible) { biblioXR.visible = false; return; }
+  construirBiblioXR(null);
+  const cam = renderer.xr.getCamera();
+  const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+  dir.y = 0;
+  if (dir.lengthSq() < 1e-4) dir.set(0, 0, -1); else dir.normalize();
+  biblioXR.position.copy(cam.position).addScaledVector(dir, 0.6);
+  biblioXR.lookAt(cam.position);
+  biblioXR.visible = true;
 }
 
 // ---------- Cruceta (mando derecho): deslizar el mueble SIN topes ----------
@@ -2532,6 +2617,7 @@ function intersecarBoton(ctrl) {
   if (menuXR.visible) lista.push(...botonesMenu);
   if (menuObjetoXR.visible) lista.push(...botonesObjeto);
   if (selectorXR.visible) lista.push(...botonesSelector);
+  if (biblioXR.visible) lista.push(...botonesBiblio);
   if (!lista.length) return null;
   const hits = rayoDe(ctrl).intersectObjects(lista, false);
   return hits.length ? hits[0].object : null;
@@ -2548,6 +2634,7 @@ function alSeleccionar(ctrl) {
   if (menuXR.visible) { menuXR.visible = false; return; } // clic fuera cierra el menú
   if (menuObjetoXR.visible) { menuObjetoXR.visible = false; return; }
   if (selectorXR.visible) { selectorXR.visible = false; return; }
+  if (biblioXR.visible) { biblioXR.visible = false; return; }
   if (modoMarcarPared) {
     if (seleccionarParedRayo(ctrl)) {
       pulso(ctrl);
@@ -2845,6 +2932,7 @@ renderer.xr.addEventListener('sessionend', () => {
   llevando = null;
   gizmoDrag = null;
   selectorXR.visible = false;
+  biblioXR.visible = false;
   alturaLibre = false;
   ayudaXR.visible = false;
   despieceXR.visible = false;
@@ -3032,7 +3120,7 @@ renderer.setAnimationLoop((_, frame) => {
     seguro('botones', () => {
       let apuntado = null;
       for (const c of controlesXR) if (c.visible) apuntado = intersecarBoton(c) || apuntado;
-      for (const b of [...botonesXR, ...botonesMenu, ...botonesSelector, ...botonesCruceta, ...botonesObjeto]) {
+      for (const b of [...botonesXR, ...botonesMenu, ...botonesSelector, ...botonesCruceta, ...botonesObjeto, ...botonesBiblio]) {
         b.material.color.setHex(b === apuntado ? 0xffc46b : (b.userData.activo ? 0xe8a33d : 0xffffff));
       }
     });
