@@ -1028,12 +1028,17 @@ function nivelTecho() {
 }
 
 // ---------- Fábrica de botones 3D con etiqueta redibujable ----------
+// El canvas se dibuja al DOBLE de resolución + anisotropía: texto NÍTIDO
+// en el visor (antes se veía borroso por textura de baja resolución).
+const NITIDEZ = 2;
 function texturaTexto(texto, w, h, fuente, bg, fg, icono = null) {
   const cv = document.createElement('canvas');
-  cv.width = w; cv.height = h;
+  cv.width = w * NITIDEZ; cv.height = h * NITIDEZ;
   const ctx = cv.getContext('2d');
+  ctx.scale(NITIDEZ, NITIDEZ);
   const tx = new THREE.CanvasTexture(cv);
   tx.colorSpace = THREE.SRGBColorSpace;
+  tx.anisotropy = renderer.capabilities.getMaxAnisotropy();
   const dibujar = (txt) => {
     ctx.clearRect(0, 0, w, h);
     const r = Math.min(18, h * 0.28);
@@ -1066,6 +1071,20 @@ function texturaTexto(texto, w, h, fuente, bg, fg, icono = null) {
   };
   dibujar(texto);
   return { tx, dibujar };
+}
+
+// Coloca un panel flotante frente al usuario, VERTICAL (solo giro yaw).
+// El lookAt de antes lo inclinaba de forma incómoda cuando el panel era alto
+// o el usuario miraba hacia abajo — quedaba "acostado" o mal ubicado.
+function colocarPanelFrente(grupo, dist, dy = -0.03) {
+  const cam = renderer.xr.getCamera();
+  const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+  dir.y = 0;
+  if (dir.lengthSq() < 1e-4) dir.set(0, 0, -1); else dir.normalize();
+  grupo.position.copy(cam.position).addScaledVector(dir, dist);
+  grupo.position.y = cam.position.y + dy;
+  grupo.rotation.set(0, Math.atan2(dir.x, dir.z) + Math.PI, 0);
+  grupo.visible = true;
 }
 
 function crearBotonXR(etiqueta, accion, w, h, fuente = 'bold 30px sans-serif', icono = null) {
@@ -1538,14 +1557,7 @@ function abrirMenuObjeto() {
   if (menuObjetoXR.visible) { menuObjetoXR.visible = false; return; }
   if (!muebleGroup) return;
   construirMenuObjeto();
-  const cam = renderer.xr.getCamera();
-  const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-  dir.y = 0;
-  if (dir.lengthSq() < 1e-4) dir.set(0, 0, -1); else dir.normalize();
-  menuObjetoXR.position.copy(cam.position).addScaledVector(dir, 0.55);
-  menuObjetoXR.position.y = cam.position.y - 0.02;
-  menuObjetoXR.lookAt(cam.position);
-  menuObjetoXR.visible = true;
+  colocarPanelFrente(menuObjetoXR, 0.55, -0.02);
 }
 
 // ---------- Modo "4 puntos": medir un espacio y encajar el mueble ----------
@@ -1648,14 +1660,7 @@ function aplicarCuatroPuntos() {
 }
 
 function abrirMenu() {
-  const cam = renderer.xr.getCamera();
-  const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-  dir.y = 0;
-  if (dir.lengthSq() < 1e-4) dir.set(0, 0, -1); else dir.normalize();
-  menuXR.position.copy(cam.position).addScaledVector(dir, 0.55);
-  menuXR.position.y = cam.position.y - 0.04;
-  menuXR.lookAt(cam.position);
-  menuXR.visible = true;
+  colocarPanelFrente(menuXR, 0.55, -0.04);
 }
 
 function alternarMenu() {
@@ -1716,13 +1721,7 @@ scene.add(ayudaXR);
 
 function alternarAyuda() {
   if (ayudaXR.visible) { ayudaXR.visible = false; return; }
-  const cam = renderer.xr.getCamera();
-  const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-  dir.y = 0;
-  if (dir.lengthSq() < 1e-4) dir.set(0, 0, -1); else dir.normalize();
-  ayudaXR.position.copy(cam.position).addScaledVector(dir, 0.85);
-  ayudaXR.lookAt(cam.position);
-  ayudaXR.visible = true;
+  colocarPanelFrente(ayudaXR, 0.85, 0);
 }
 
 // ---------- Panel de DESPIECE + COTIZACIÓN dentro de AR ----------
@@ -1822,13 +1821,7 @@ function alternarDespieceXR() {
   if (despieceXR.visible) { despieceXR.visible = false; return; }
   if (!datosDespiece) return;
   dibujarDespieceXR(datosDespiece);
-  const cam = renderer.xr.getCamera();
-  const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-  dir.y = 0;
-  if (dir.lengthSq() < 1e-4) dir.set(0, 0, -1); else dir.normalize();
-  despieceXR.position.copy(cam.position).addScaledVector(dir, 0.8);
-  despieceXR.lookAt(cam.position);
-  despieceXR.visible = true;
+  colocarPanelFrente(despieceXR, 0.8, 0);
 }
 
 // ---------- Selector de muebles con miniaturas 3D ----------
@@ -1900,13 +1893,7 @@ const botonesSelector = [];
 function alternarSelector() {
   if (selectorXR.visible) { selectorXR.visible = false; return; }
   for (const b of botonesSelector) b.userData.activo = (b.userData.tipoSel === $('tipo').value);
-  const cam = renderer.xr.getCamera();
-  const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-  dir.y = 0;
-  if (dir.lengthSq() < 1e-4) dir.set(0, 0, -1); else dir.normalize();
-  selectorXR.position.copy(cam.position).addScaledVector(dir, 0.65);
-  selectorXR.lookAt(cam.position);
-  selectorXR.visible = true;
+  colocarPanelFrente(selectorXR, 0.65, -0.02);
 }
 
 // ---------- 📚 Biblioteca de 50 diseños DENTRO de las gafas ----------
@@ -1929,7 +1916,7 @@ function limpiarBiblioXR() {
 
 function construirBiblioXR(cat) {
   limpiarBiblioXR();
-  const corto = (s) => s.length > 26 ? s.slice(0, 25) + '…' : s;
+  const corto = (s) => s.length > 24 ? s.slice(0, 23) + '…' : s;
   let items;
   if (!cat) {
     items = [...new Set(PLANTILLAS.map(t => t.cat))]
@@ -1944,44 +1931,43 @@ function construirBiblioXR(cat) {
           }]
         : null)
       .filter(Boolean);
-    items.push(['◀ Volver a categorías', () => construirBiblioXR(null)]);
+    items.push(['◀ Volver', () => construirBiblioXR(null)]);
   }
 
-  const bw = 0.22, bh = 0.031, paso = 0.037;
-  const alto = items.length * paso + 0.075;
+  // Categorías: 1 columna ancha. Diseños: 2 columnas → panel bajo y cómodo.
+  const cols = cat ? 2 : 1;
+  const bw = cat ? 0.17 : 0.30;
+  const bh = 0.038, gx = 0.008, paso = 0.044;
+  const filas = Math.ceil(items.length / cols);
+  const alto = filas * paso + 0.09;
+  const ancho = cat ? 0.37 : 0.34;
   const fondo = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.26, alto),
-    new THREE.MeshBasicMaterial({ color: 0x14110e, transparent: true, opacity: 0.9 })
+    new THREE.PlaneGeometry(ancho, alto),
+    new THREE.MeshBasicMaterial({ color: 0x14110e, transparent: true, opacity: 0.92 })
   );
   biblioXR.add(fondo);
-  const tit = texturaTexto(cat ? corto(cat) : '📚 Biblioteca Florenza', 460, 44,
-    'bold 24px sans-serif', '#1d1813', '#e8a33d');
+  const tit = texturaTexto(cat ? corto(cat) : '📚 Biblioteca Florenza', 460, 48,
+    'bold 26px sans-serif', '#1d1813', '#e8a33d');
   const titM = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.21, 0.02),
+    new THREE.PlaneGeometry(0.24, 0.024),
     new THREE.MeshBasicMaterial({ map: tit.tx, transparent: true })
   );
-  titM.position.set(0, alto / 2 - 0.028, 0.002);
+  titM.position.set(0, alto / 2 - 0.032, 0.002);
   biblioXR.add(titM);
-  let cy = alto / 2 - 0.062;
-  for (const [etq, acc] of items) {
-    const btn = crearBotonXR(etq, acc, bw, bh, 'bold 21px sans-serif');
-    btn.position.set(0, cy, 0.003);
+  items.forEach(([etq, acc], i) => {
+    const col = i % cols, fila = Math.floor(i / cols);
+    const x = cols === 2 ? (col - 0.5) * (bw + gx) : 0;
+    const btn = crearBotonXR(etq, acc, bw, bh, cat ? 'bold 25px sans-serif' : 'bold 30px sans-serif');
+    btn.position.set(x, alto / 2 - 0.078 - fila * paso, 0.003);
     biblioXR.add(btn);
     botonesBiblio.push(btn);
-    cy -= paso;
-  }
+  });
 }
 
 function alternarBiblioXR() {
   if (biblioXR.visible) { biblioXR.visible = false; return; }
   construirBiblioXR(null);
-  const cam = renderer.xr.getCamera();
-  const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-  dir.y = 0;
-  if (dir.lengthSq() < 1e-4) dir.set(0, 0, -1); else dir.normalize();
-  biblioXR.position.copy(cam.position).addScaledVector(dir, 0.6);
-  biblioXR.lookAt(cam.position);
-  biblioXR.visible = true;
+  colocarPanelFrente(biblioXR, 0.7, -0.02);
 }
 
 // ---------- Cruceta (mando derecho): deslizar el mueble SIN topes ----------
