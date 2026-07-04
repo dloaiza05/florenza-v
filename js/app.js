@@ -1187,7 +1187,7 @@ function ajustarCampo(id, delta) {
 }
 
 const fondoPanel = new THREE.Mesh(
-  new THREE.PlaneGeometry(0.29, 0.275),
+  new THREE.PlaneGeometry(0.29, 0.235),
   new THREE.MeshBasicMaterial({ color: 0x14110e, transparent: true, opacity: 0.85 })
 );
 panelXR.add(fondoPanel);
@@ -1276,18 +1276,14 @@ function actualizarPanelInfo() {
       btnMover.userData.activo = moverActivo;
     }],
   ], -0.038);
-  filaBtns([
-    ['⟲ 15°', () => girarMueble(15)],
-    ['⟳ 15°', () => girarMueble(-15)],
-    ['Frente 0°', () => frenteAMi()],
-    ['Deshacer', () => deshacer()],
-  ], -0.076);
+  // Sin repetidos: girar 15° vive en los grips y la cruceta; Al piso en la
+  // cruceta (⌂); Pegar pared en el menú A → aquí solo lo que no está en otro lado.
   filaBtns([
     ['Muebles', () => alternarSelector()],
     ['➕ Añadir', () => agregarMueble()],
-    ['Al piso', alPiso],
-    ['Pegar pared', () => { guardarHistorial(); marcarMovimiento(); pegarAPared(Infinity); restringirPosicion(); }],
-  ], -0.114);
+    ['Frente 0°', () => frenteAMi()],
+    ['Deshacer', () => deshacer()],
+  ], -0.076);
   btnMover.userData.setLabel('Mover: No');
   btnMover.userData.activo = false;
 }
@@ -1322,7 +1318,6 @@ const SECCIONES_MENU = [
     ['Traer aquí', () => traerAlFrente()],
   ]],
   ['PROYECTO', [
-    ['➕ Añadir mueble', () => agregarMueble()],
     ['📚 Biblioteca', () => { menuXR.visible = false; alternarBiblioXR(); }],
     ['📐 4 puntos', () => alternarCuatroPuntos()],
     ['🎯 Marcar pared', () => {
@@ -2015,7 +2010,7 @@ const botonesCruceta = [];
 // La cruceta vive ENCIMA del panel de medidas (mano izquierda), sin taparlo.
 // Subida un poco más para que no estorbe (incluye ◀▶▲▼, 15° y Eliminar).
 panelXR.add(crucetaXR);
-crucetaXR.position.set(0, 0.31, 0.002);
+crucetaXR.position.set(0, 0.28, 0.002);
 crucetaXR.rotation.set(0, 0, 0);
 
 function moverLocal(dx, dy) {
